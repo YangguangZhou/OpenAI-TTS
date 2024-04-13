@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="zh">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>登录页面</title>
+  <style>
+    body,
+    html {
+      height: 100%;
+      margin: 0;
+      font-family: Arial, sans-serif;
+    }
+
+    .container {
+      display: flex;
+      height: 100%;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .login-form {
+      margin-left: 10%;
+      margin-right: 10%;
+      width: 30%;
+      max-width: 600px;
+    }
+
+    .login-form h2 {
+      color: #1f293b;
+    }
+
+    .login-form form {
+      display: flex;
+      flex-direction: column;
+    }
+
+    input {
+      margin: 10px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      /* 圆角边框 */
+    }
+
+    button {
+      background-color: #1f293b;
+      /* 按钮颜色 */
+      color: white;
+      padding: 15px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 5px;
+      /* 圆角边框 */
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #16202a;
+    }
+
+    select {
+      margin: 10px 0;
+      padding: 15px;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+    }
+
+
+    select:focus {
+      border-color: #000;
+      /* 聚焦时改变边框颜色 */
+      border: 2px solid #000;
+      border-radius: 5px;
+      /* outline: none; 移除焦点的轮廓 */
+    }
+
+
+    .background-image {
+      flex: 1;
+      width: 50%;
+      height: 100vh;
+      /* 设置高度为视口高度 */
+      background: url('bg.jpg') center/cover no-repeat;
+      /* 简化写法，合并 background-position 和 background-size */
+    }
+
+    .blur {
+      background-color: rgba(255, 255, 255, 0.75);
+      backdrop-filter: blur(10px);
+      position: fixed;
+      bottom: 20px;
+      margin-left: 50%;
+      left: 20px;
+      right: 20px;
+      padding: 20px;
+      border: 1px solid white;
+      border-radius: 10px;
+      text-align: center;
+    }
+
+    a {
+      text-decoration: none;
+      color: #2c72da;
+    }
+
+    #loading {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 10px;
+      background-color: rgba(0, 0, 0, 0.7);
+      color: white;
+      border-radius: 5px;
+      display: none;
+      z-index: 1000;
+      /* 确保加载提示在其他内容上方显示 */
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <div class="login-form">
+      <h2>OAI 文本转语音 Text to TTS</h2>
+      <form>
+        <label for="text-input">文本内容</label>
+        <input id="text-input" type="Text" placeholder="Enter your text" required>
+        <label for="token-input">Access Token或Shared Token</label>
+        <input id="token-input" type="Token" placeholder="Enter your access token or shared token" required>
+        <label for="voice-select">人声</label>
+        <select id="voice-select" class="select">
+          <option value="alloy">alloy</option>
+          <option value="echo">echo</option>
+          <option value="fable">fable</option>
+          <option value="onyx">onyx</option>
+          <option value="nova">nova</option>
+          <option value="shimmer">shimmer</option>
+        </select>
+        <button type="submit">生成语音</button>
+        <div id="loading" style="display: none;">加载中，请稍候...</div>
+        <div id="response-container"></div>
+      </form>
+    </div>
+    <div class="background-image">
+    </div>
+    <div class="blur">
+      <h2>OpenAI, not CloseAI.</h2>
+      <h4>Code by <a href="https://jerryz.com.cn/">Jerry Zhou</a>, Powered by <a href="https://linux.do/">Linux Do</a>
+      </h4>
+      <p><a href="https://cn.jerryz.com.cn/">广告：CNChat——ChatGPT官网镜像站</a></p>
+    </div>
+  </div>
+  <script>
+    document.querySelector('form').addEventListener('submit', function (event) {
+      event.preventDefault();
+
+      const token = document.getElementById('token-input').value;
+      const text = document.getElementById('text-input').value;
+      const voice = document.getElementById('voice-select').value;
+      const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+      const data = JSON.stringify({
+        model: "tts-1-hd",
+        input: text,
+        voice: voice,
+        response_format: "mp3",
+        speed: 1
+      });
+      const url = "https://api.oaifree.com/v1/audio/speech";
+      const responseContainer = document.getElementById('response-container'); // 获取响应容器
+      const loadingElement = document.getElementById('loading'); // 获取加载提示元素
+
+      // 显示加载提示
+      loadingElement.style.display = 'block';
+      responseContainer.innerHTML = ''; // 清空之前的内容
+
+      fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: data
+      })
+        .then(response => response.blob())
+        .then(blob => {
+          // 请求完成后隐藏加载提示
+          loadingElement.style.display = 'none';
+          if (blob.type === 'application/json') {
+            return blob.text().then(text => Promise.reject(text));
+          } else {
+            const url = URL.createObjectURL(blob);
+            const audioElement = document.createElement('audio');
+            audioElement.src = url;
+            audioElement.controls = true;
+            responseContainer.appendChild(audioElement); // 添加到指定的容器中
+          }
+        })
+        .catch(error => {
+          // 请求完成或发生错误后隐藏加载提示
+          loadingElement.style.display = 'none';
+          const errorElement = document.createElement('p');
+          errorElement.style.color = 'red';
+          errorElement.textContent = 'Error: ' + error;
+          responseContainer.appendChild(errorElement); // 添加到指定的容器中
+        });
+    });
+  </script>
+</body>
+
+</html>
